@@ -10,6 +10,8 @@ data class SpotifySession(
     @Json(name = "scope") val scope: String = "",
     @Json(name = "expires_in") val expireTime: Long = 0
 ) {
+    val expires: Long = expireTime.plus(System.currentTimeMillis())
+
     val authentication: String
         get() = "bearer $accessToken"
 }

@@ -2,7 +2,6 @@ package se.bylenny.tunin
 
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
@@ -18,26 +17,18 @@ import kotlinx.android.synthetic.main.activity_main.*
 import se.bylenny.tunin.list.InflatorFactory
 import se.bylenny.tunin.list.ListItem
 import se.bylenny.tunin.list.SpotifyListAdapter
-import se.bylenny.tunin.list.album.AlbumListItem
 import se.bylenny.tunin.list.album.AlbumViewHolder
-import se.bylenny.tunin.list.artist.ArtistListItem
 import se.bylenny.tunin.list.artist.ArtistViewHolder
-import se.bylenny.tunin.list.title.TitleListItem
 import se.bylenny.tunin.list.title.TitleViewHolder
-import se.bylenny.tunin.list.track.TrackListItem
 import se.bylenny.tunin.list.track.TrackViewHolder
 import se.bylenny.tunin.log.Logger
 import se.bylenny.tunin.log.lazyLogger
 import se.bylenny.tunin.persist.SharedPreferencesPersistantStorage
 import se.bylenny.tunin.spotify.Spotify
-import se.bylenny.tunin.spotify.models.Artist
-import se.bylenny.tunin.spotify.models.Item
-import se.bylenny.tunin.spotify.models.SpotifyList
 import se.bylenny.tunin.spotify.models.SpotifySession
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class MainActivity : AppCompatActivity(), Searcher {
+class MainActivity : AppCompatActivity(), Searcher, SpotifyListAdapter.ClickListener {
 
     enum class State {
         CONNECT,
@@ -150,12 +141,19 @@ class MainActivity : AppCompatActivity(), Searcher {
         list.layoutManager?.onRestoreInstanceState(savedInstanceState?.getParcelable("layoutManager"))
     }
 
+    override fun onClicked(item: ListItem) {
+        val intent = spotify.createOpenIntent(item)
+        startActivity(intent)
+    }
+
     private fun onUpdateSearch(query: String) {
         log.debug("onUpdateSearch $query")
-        state = State.LIST
-        spotify.api
-            .search(spotify.authorization, query)
-            .map { convertToList(it.body() ?: throw IOException("${it.errorBody()?.string()}")) }
+        if (spotify.hasSession) {
+            state = State.LIST
+        } else {
+            state = State.CONNECT
+        }
+        spotify.search(query)
             .subscribeOn(Schedulers.newThread())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({
@@ -164,43 +162,6 @@ class MainActivity : AppCompatActivity(), Searcher {
                 log.debug(it.toString())
             }, log::error)
             .addTo(disposables)
-    }
-
-    private fun convertToList(input: SpotifyList): List<ListItem> {
-        val tracksTitle = listOf(TitleListItem("tracks"))
-        val tracks: List<ListItem> = input.tracks?.items?.map { convertToTrackItem(it) } ?: emptyList()
-        val artistsTitle = listOf(TitleListItem("artists"))
-        val artists: List<ListItem> = input.artists?.items?.map { convertToArtistItem(it) } ?: emptyList()
-        val albumsTitle = listOf(TitleListItem("albums"))
-        val albums: List<ListItem> = input.albums?.items?.map { convertToAlbumItem(it) } ?: emptyList()
-        return tracksTitle.plus(tracks).plus(artistsTitle).plus(artists).plus(albumsTitle).plus(albums)
-    }
-
-    private fun convertToTrackItem(item: Item): ListItem {
-        return TrackListItem(
-            item.uri,
-            item.name,
-            item.trackNumber,
-            item.discNumber,
-            item.album?.name,
-            item.album?.artists?.mapNotNull { it.name } ?: emptyList()
-        )
-    }
-
-    private fun convertToArtistItem(item: Item): ListItem {
-        return ArtistListItem(
-            item.uri,
-            item.name,
-            item.images.firstOrNull()?.url
-        )
-    }
-
-    private fun convertToAlbumItem(item: Item): ListItem {
-        return AlbumListItem(
-            item.uri,
-            item.name,
-            item.images.firstOrNull()?.url
-        )
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -219,6 +180,7 @@ class MainActivity : AppCompatActivity(), Searcher {
 
     override fun onResume() {
         super.onResume()
+        adapter.listener = this
 
         query
             .filter { it.length > 2 }
@@ -232,6 +194,7 @@ class MainActivity : AppCompatActivity(), Searcher {
 
     override fun onPause() {
         super.onPause()
+        adapter.listener = null
         disposables.clear()
     }
 

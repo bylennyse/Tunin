@@ -1,42 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools"
-        android:orientation="vertical"
-        android:foreground="?selectableItemBackground"
-        tools:background="@color/black"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                             xmlns:app="http://schemas.android.com/apk/res-auto"
+                                             xmlns:tools="http://schemas.android.com/tools"
+                                             android:id="@+id/container"
+                                             android:foreground="?selectableItemBackground"
+                                             tools:background="@color/black"
+                                             android:layout_width="match_parent"
+                                             android:layout_height="wrap_content">
 
-    <TextView
-            android:id="@+id/title"
-            tools:text="Title"
-            style="@style/Text.Large"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+    <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintDimensionRatio="1:1"
+            android:id="@+id/image"
+            android:scaleType="centerCrop"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
     />
 
-    <TextView
-            android:id="@+id/artist"
-            tools:text="Type"
-            style="@style/Text.Medium"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-    />
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                  xmlns:app="http://schemas.android.com/apk/res-auto"
+                  xmlns:tools="http://schemas.android.com/tools"
+                  android:orientation="vertical"
+                  android:foreground="?selectableItemBackground"
+                  tools:background="@color/black"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content">
 
-    <TextView
-            android:id="@+id/album"
-            tools:text="Type"
-            style="@style/Text.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-    />
+        <TextView
+                android:id="@+id/title"
+                tools:text="Title"
+                style="@style/Text.Large"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+        />
 
-    <TextView
-            android:id="@+id/misc"
-            tools:text="Type"
-            style="@style/Text.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-    />
-</LinearLayout>
+        <TextView
+                android:id="@+id/artist"
+                tools:text="Artist"
+                style="@style/Text.Medium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+        />
+
+        <TextView
+                android:id="@+id/album"
+                tools:text="Album"
+                style="@style/Text.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+        />
+
+        <TextView
+                android:id="@+id/misc"
+                tools:text="Misc info"
+                style="@style/Text.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+        />
+    </LinearLayout>
+</android.support.constraint.ConstraintLayout>

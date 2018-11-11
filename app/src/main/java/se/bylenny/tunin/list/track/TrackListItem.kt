@@ -6,9 +6,10 @@ data class TrackListItem(
     override val uri: String,
     val name: String,
     val trackNr: Int,
-    val discNr: Int,
+    val diskNr: Int,
     val album: String?,
-    val artists: List<String>
+    val artists: List<String>,
+    val image: String?
 ) : ListItem {
     override val type: Int = "track".hashCode()
 }

@@ -13,20 +13,10 @@ import retrofit2.http.Headers
 import retrofit2.http.Query
 import se.bylenny.tunin.log.loggingInterceptor
 import se.bylenny.tunin.spotify.models.SpotifyList
-import se.bylenny.tunin.spotify.models.SpotifyUser
 import java.util.concurrent.TimeUnit
 
 
 interface SpotifyApi {
-
-    @GET("/v1/me")
-    @Headers(value = [
-        "Accept: application/json",
-        "Content-Type: application/json"
-    ])
-    fun user(
-        @Header("Authorization") authorization: String
-    ): Single<Response<SpotifyUser>>
 
     @GET("/v1/search")
     @Headers(value = [
@@ -42,31 +32,6 @@ interface SpotifyApi {
     ): Single<Response<SpotifyList>>
 
     companion object {
-
-        /*
-        fun authenticate() {
-            // Set the connection parameters
-            val connectionParams = ConnectionParams.Builder(CLIENT_ID)
-                .setRedirectUri(REDIRECT_URI)
-                .showAuthView(true)
-                .build()
-
-            SpotifyAppRemote.connect(this, connectionParams,
-                object : Connector.ConnectionListener() {
-
-                    fun onConnected(spotifyAppRemote: SpotifyAppRemote) {
-                        spotifyAppRemote.playerApi
-                    }
-
-                    fun onFailure(throwable: Throwable) {
-
-                    }
-                })
-        }
-        */
-
-
-
         fun create(): SpotifyApi {
             val clazz = SpotifyApi::class.java
 
@@ -86,6 +51,5 @@ interface SpotifyApi {
                 .build()
                 .create(clazz)
         }
-
     }
 }

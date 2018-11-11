@@ -3,10 +3,17 @@ package se.bylenny.tunin.spotify
 import android.content.Intent
 import android.net.Uri
 import io.reactivex.Single
-import se.bylenny.tunin.BuildConfig
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import se.bylenny.tunin.list.ListItem
+import se.bylenny.tunin.list.album.AlbumListItem
+import se.bylenny.tunin.list.artist.ArtistListItem
+import se.bylenny.tunin.list.title.TitleListItem
+import se.bylenny.tunin.list.track.TrackListItem
 import se.bylenny.tunin.log.lazyLogger
 import se.bylenny.tunin.persist.PersistantStorage
+import se.bylenny.tunin.spotify.models.Item
+import se.bylenny.tunin.spotify.models.SpotifyList
 import se.bylenny.tunin.spotify.models.SpotifySession
 import java.io.IOException
 import java.util.*
@@ -15,7 +22,6 @@ class Spotify(
     private val storage: PersistantStorage<SpotifySession>
 ) {
     companion object {
-        const val CLIENT_NAME = "${BuildConfig.APPLICATION_ID}-${BuildConfig.VERSION_NAME}"
         const val CLIENT_SECRET = "5c69133deb4940d8bb036e6c9319c6f6"
         const val CLIENT_ID = "38cb0aa5e6b34cbc8f358199f52a4697"
         const val REDIRECT_URI = "tunin://oauth_callback/"
@@ -27,16 +33,22 @@ class Spotify(
 
     private var loginState: String = UUID.randomUUID().toString()
     private val accountApi: AccountApi by lazy { AccountApi.create() }
-    val api: SpotifyApi by lazy { SpotifyApi.create() }
+    private val api: SpotifyApi by lazy { SpotifyApi.create() }
     private var session: SpotifySession? = storage.restore()
-    val authorization: String
+    private val authorization: String
         get() = "Bearer ${session?.accessToken}"
     val hasSession: Boolean
         get() = session != null
 
     init {
+        refreshTokens()
+    }
+
+    private fun refreshTokens() {
         session?.refreshToken?.let { refreshToken ->
             accountApi.refreshTokens(refreshToken)
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
                 .map { response ->
                     if (!response.isSuccessful) {
                         throw IOException("${response.raw().request().url()} => ${response.errorBody()}")
@@ -46,8 +58,15 @@ class Spotify(
                     storage.store(session)
                     session
                 }
+                .subscribe({
+                    log.debug("$it")
+                }, {
+                    storage.clear()
+                    session = null
+                })
         }
     }
+
     /**
      * Step 1 in flow
      * [https://developer.spotify.com/documentation/general/guides/authorization-guide/#authorization-code-flow]
@@ -100,5 +119,57 @@ class Spotify(
                 storage.store(session)
                 session
             }
+    }
+
+    fun search(query: String): Single<List<ListItem>> {
+        return api.search(authorization, query)
+            .map {
+                if (!it.isSuccessful) {
+                    if (it.code() == 401) {
+                        session = null
+                        storage.clear()
+                    }
+                }
+                val items = it.body() ?: throw IOException("${it.errorBody()?.string()}")
+                convertToList(items)
+            }
+    }
+
+    private fun convertToList(input: SpotifyList): List<ListItem> {
+        val tracksTitle = listOf(TitleListItem("tracks"))
+        val tracks: List<ListItem> = input.tracks?.items?.map { convertToTrackItem(it) } ?: emptyList()
+        val artistsTitle = listOf(TitleListItem("artists"))
+        val artists: List<ListItem> = input.artists?.items?.map { convertToArtistItem(it) } ?: emptyList()
+        val albumsTitle = listOf(TitleListItem("albums"))
+        val albums: List<ListItem> = input.albums?.items?.map { convertToAlbumItem(it) } ?: emptyList()
+        return tracksTitle.plus(tracks).plus(artistsTitle).plus(artists).plus(albumsTitle).plus(albums)
+    }
+
+    private fun convertToTrackItem(item: Item): ListItem {
+        return TrackListItem(
+            item.uri,
+            item.name,
+            item.trackNumber,
+            item.discNumber,
+            item.album?.name,
+            item.artists.mapNotNull { it.name },
+            item.album?.images?.firstOrNull()?.url
+        )
+    }
+
+    private fun convertToArtistItem(item: Item): ListItem {
+        return ArtistListItem(
+            item.uri,
+            item.name,
+            item.images.firstOrNull()?.url
+        )
+    }
+
+    private fun convertToAlbumItem(item: Item): ListItem {
+        return AlbumListItem(
+            item.uri,
+            item.name,
+            item.images.firstOrNull()?.url
+        )
     }
 }
