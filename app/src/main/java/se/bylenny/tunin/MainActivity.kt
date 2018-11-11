@@ -1,11 +1,14 @@
 package se.bylenny.tunin
 
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
 import android.view.View
 import android.widget.SearchView
+import com.squareup.moshi.Moshi
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
@@ -25,6 +28,7 @@ import se.bylenny.tunin.list.track.TrackListItem
 import se.bylenny.tunin.list.track.TrackViewHolder
 import se.bylenny.tunin.log.Logger
 import se.bylenny.tunin.log.lazyLogger
+import se.bylenny.tunin.persist.SharedPreferencesPersistantStorage
 import se.bylenny.tunin.spotify.Spotify
 import se.bylenny.tunin.spotify.models.Artist
 import se.bylenny.tunin.spotify.models.Item
@@ -73,7 +77,12 @@ class MainActivity : AppCompatActivity(), Searcher {
 
     private val log: Logger by lazyLogger()
     private val disposables: CompositeDisposable = CompositeDisposable()
-    private val spotify: Spotify by lazy { Spotify() }
+    private val spotify: Spotify by lazy {
+        val prefs = getSharedPreferences("spotify", Context.MODE_PRIVATE)
+        val type = SpotifySession::class.java
+        val adapter = Moshi.Builder().build().adapter(type)
+        Spotify(SharedPreferencesPersistantStorage(adapter, type, prefs))
+    }
     private val searchListener = SearchListener(this)
     private val query = PublishSubject.create<String>()
 
@@ -125,6 +134,20 @@ class MainActivity : AppCompatActivity(), Searcher {
 
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = adapter
+
+        if(spotify.hasSession) {
+            state = State.SEARCH
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle?) {
+        outState?.putParcelable("layoutManager", list.layoutManager?.onSaveInstanceState())
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle?) {
+        super.onRestoreInstanceState(savedInstanceState)
+        list.layoutManager?.onRestoreInstanceState(savedInstanceState?.getParcelable("layoutManager"))
     }
 
     private fun onUpdateSearch(query: String) {
@@ -196,12 +219,15 @@ class MainActivity : AppCompatActivity(), Searcher {
 
     override fun onResume() {
         super.onResume()
+
         query
             .filter { it.length > 2 }
             .throttleFirst(3, TimeUnit.SECONDS)
             .subscribe(this::onUpdateSearch, log::error)
             .addTo(disposables)
-        log.debug("query has Observers: ${query.hasObservers()}")
+
+        // Trigger fetch
+        onUpdateSearch(search_bar.query.toString())
     }
 
     override fun onPause() {

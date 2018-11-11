@@ -31,6 +31,8 @@ class Spotify(
     private var session: SpotifySession? = storage.restore()
     val authorization: String
         get() = "Bearer ${session?.accessToken}"
+    val hasSession: Boolean
+        get() = session != null
 
     init {
         session?.refreshToken?.let { refreshToken ->
