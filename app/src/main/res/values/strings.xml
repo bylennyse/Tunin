@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Tunin</string>
+
+    <string name="label_connect">Connect</string>
+</resources>
