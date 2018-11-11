@@ -7,9 +7,8 @@ import com.squareup.moshi.JsonClass
 data class SpotifySession(
     @Json(name = "access_token") val accessToken: String?,
     @Json(name = "refresh_token") val refreshToken: String?,
-    @Json(name = "token_type") val type: String?,
-    @Json(name = "scope") val scope: String?,
-    @Json(name = "expires_in") val expireTime: Long?
+    @Json(name = "scope") val scope: String = "",
+    @Json(name = "expires_in") val expireTime: Long = 0
 ) {
     val authentication: String
         get() = "bearer $accessToken"

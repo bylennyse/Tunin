@@ -38,7 +38,7 @@ interface SpotifyApi {
         @Query("q") query: String,
         @Query("offset") offset: Int = 0,
         @Query("limit") limit: Int = 50,
-        @Query("type") type: String = "album,artist,playlist,track"
+        @Query("type") type: String = "album,artist,track"
     ): Single<Response<SpotifyList>>
 
     companion object {

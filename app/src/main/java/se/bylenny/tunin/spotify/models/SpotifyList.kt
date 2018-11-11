@@ -7,6 +7,5 @@ import com.squareup.moshi.JsonClass
 data class SpotifyList(
     @Json(name = "albums") val albums: Albums? = null,
     @Json(name = "artists") val artists: Artists? = null,
-    @Json(name = "tracks") val tracks: Tracks? = null,
-    @Json(name = "playlists") val playlists: Playlists? = null
+    @Json(name = "tracks") val tracks: Tracks? = null
 )

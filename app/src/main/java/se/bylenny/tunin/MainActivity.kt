@@ -12,11 +12,22 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import kotlinx.android.synthetic.main.activity_main.*
-import se.bylenny.tunin.list.Item
+import se.bylenny.tunin.list.InflatorFactory
+import se.bylenny.tunin.list.ListItem
 import se.bylenny.tunin.list.SpotifyListAdapter
+import se.bylenny.tunin.list.album.AlbumListItem
+import se.bylenny.tunin.list.album.AlbumViewHolder
+import se.bylenny.tunin.list.artist.ArtistListItem
+import se.bylenny.tunin.list.artist.ArtistViewHolder
+import se.bylenny.tunin.list.title.TitleListItem
+import se.bylenny.tunin.list.title.TitleViewHolder
+import se.bylenny.tunin.list.track.TrackListItem
+import se.bylenny.tunin.list.track.TrackViewHolder
 import se.bylenny.tunin.log.Logger
 import se.bylenny.tunin.log.lazyLogger
 import se.bylenny.tunin.spotify.Spotify
+import se.bylenny.tunin.spotify.models.Artist
+import se.bylenny.tunin.spotify.models.Item
 import se.bylenny.tunin.spotify.models.SpotifyList
 import se.bylenny.tunin.spotify.models.SpotifySession
 import java.io.IOException
@@ -37,22 +48,22 @@ class MainActivity : AppCompatActivity(), Searcher {
             field = value
             when (value) {
                 State.SEARCH -> {
-                    search_bar.visibility = View.VISIBLE
+                    supportActionBar?.show()
                     connect_button.visibility = View.GONE
                     list.visibility = View.GONE
                 }
                 State.CONNECT -> {
-                    search_bar.visibility = View.GONE
+                    supportActionBar?.hide()
                     connect_button.visibility = View.VISIBLE
                     list.visibility = View.GONE
                 }
                 State.CONNECTING -> {
-                    search_bar.visibility = View.GONE
+                    supportActionBar?.hide()
                     connect_button.visibility = View.VISIBLE
                     list.visibility = View.GONE
                 }
                 State.LIST -> {
-                    search_bar.visibility = View.VISIBLE
+                    supportActionBar?.show()
                     connect_button.visibility = View.GONE
                     list.visibility = View.VISIBLE
                 }
@@ -86,11 +97,18 @@ class MainActivity : AppCompatActivity(), Searcher {
         state = State.LIST
     }
 
-    private val adapter = SpotifyListAdapter(R.layout.list_item)
+    private val adapter = SpotifyListAdapter(
+        "track" to InflatorFactory(R.layout.list_item_track) { TrackViewHolder(it) },
+        "artist" to InflatorFactory(R.layout.list_item_artist) { ArtistViewHolder(it) },
+        "album" to InflatorFactory(R.layout.list_item_album) { AlbumViewHolder(it) },
+        "title" to InflatorFactory(R.layout.list_item_title) { TitleViewHolder(it) }
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        setSupportActionBar(toolbar)
 
         connect_button.setOnClickListener {
             log.debug("Connecting...")
@@ -125,20 +143,42 @@ class MainActivity : AppCompatActivity(), Searcher {
             .addTo(disposables)
     }
 
-    private fun convertToList(input: SpotifyList): List<Item> {
-        val albums: List<Item> = input.albums?.items?.map { convertToItem(it) } ?: emptyList()
-        val artists: List<Item> = input.artists?.items?.map { convertToItem(it) } ?: emptyList()
-        val playlists: List<Item> = input.playlists?.items?.map { convertToItem(it) } ?: emptyList()
-        val tracks: List<Item> = input.tracks?.items?.map { convertToItem(it) } ?: emptyList()
-        return albums.plus(artists).plus(playlists).plus(tracks)
+    private fun convertToList(input: SpotifyList): List<ListItem> {
+        val tracksTitle = listOf(TitleListItem("tracks"))
+        val tracks: List<ListItem> = input.tracks?.items?.map { convertToTrackItem(it) } ?: emptyList()
+        val artistsTitle = listOf(TitleListItem("artists"))
+        val artists: List<ListItem> = input.artists?.items?.map { convertToArtistItem(it) } ?: emptyList()
+        val albumsTitle = listOf(TitleListItem("albums"))
+        val albums: List<ListItem> = input.albums?.items?.map { convertToAlbumItem(it) } ?: emptyList()
+        return tracksTitle.plus(tracks).plus(artistsTitle).plus(artists).plus(albumsTitle).plus(albums)
     }
 
-    private fun convertToItem(item: se.bylenny.tunin.spotify.models.Item): Item = Item(
-        item.id,
-        item.name,
-        item.type,
-        item.href ?: ""
-    )
+    private fun convertToTrackItem(item: Item): ListItem {
+        return TrackListItem(
+            item.uri,
+            item.name,
+            item.trackNumber,
+            item.discNumber,
+            item.album?.name,
+            item.album?.artists?.mapNotNull { it.name } ?: emptyList()
+        )
+    }
+
+    private fun convertToArtistItem(item: Item): ListItem {
+        return ArtistListItem(
+            item.uri,
+            item.name,
+            item.images.firstOrNull()?.url
+        )
+    }
+
+    private fun convertToAlbumItem(item: Item): ListItem {
+        return AlbumListItem(
+            item.uri,
+            item.name,
+            item.images.firstOrNull()?.url
+        )
+    }
 
     override fun onNewIntent(intent: Intent?) {
         log.debug("onNewIntent ${intent?.data}")

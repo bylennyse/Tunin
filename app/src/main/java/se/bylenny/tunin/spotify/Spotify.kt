@@ -4,12 +4,16 @@ import android.content.Intent
 import android.net.Uri
 import io.reactivex.Single
 import se.bylenny.tunin.BuildConfig
+import se.bylenny.tunin.list.ListItem
 import se.bylenny.tunin.log.lazyLogger
+import se.bylenny.tunin.persist.PersistantStorage
 import se.bylenny.tunin.spotify.models.SpotifySession
 import java.io.IOException
 import java.util.*
 
-class Spotify {
+class Spotify(
+    private val storage: PersistantStorage<SpotifySession>
+) {
     companion object {
         const val CLIENT_NAME = "${BuildConfig.APPLICATION_ID}-${BuildConfig.VERSION_NAME}"
         const val CLIENT_SECRET = "5c69133deb4940d8bb036e6c9319c6f6"
@@ -24,10 +28,24 @@ class Spotify {
     private var loginState: String = UUID.randomUUID().toString()
     private val accountApi: AccountApi by lazy { AccountApi.create() }
     val api: SpotifyApi by lazy { SpotifyApi.create() }
-    private var session: SpotifySession? = null
+    private var session: SpotifySession? = storage.restore()
     val authorization: String
         get() = "Bearer ${session?.accessToken}"
 
+    init {
+        session?.refreshToken?.let { refreshToken ->
+            accountApi.refreshTokens(refreshToken)
+                .map { response ->
+                    if (!response.isSuccessful) {
+                        throw IOException("${response.raw().request().url()} => ${response.errorBody()}")
+                    }
+                    val session = response.body()!!
+                    this@Spotify.session = session
+                    storage.store(session)
+                    session
+                }
+        }
+    }
     /**
      * Step 1 in flow
      * [https://developer.spotify.com/documentation/general/guides/authorization-guide/#authorization-code-flow]
@@ -43,6 +61,9 @@ class Spotify {
             .appendQueryParameter("redirect_uri", Spotify.REDIRECT_URI)
             .build()
     }
+
+    fun createOpenIntent(item: ListItem): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse(item.uri))
 
     /**
      * Step 2 in flow
@@ -74,6 +95,7 @@ class Spotify {
                 }
                 val session = response.body()!!
                 this@Spotify.session = session
+                storage.store(session)
                 session
             }
     }

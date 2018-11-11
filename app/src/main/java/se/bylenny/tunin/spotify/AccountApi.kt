@@ -36,7 +36,23 @@ interface AccountApi {
         )
     ): Single<Response<SpotifySession>>
 
-
+    /**
+     * [https://developer.spotify.com/documentation/general/guides/authorization-guide/#4-requesting-a-refreshed-access-token-spotify-returns-a-new-access-token-to-your-app]
+     */
+    @FormUrlEncoded
+    @POST("/api/token")
+    @Headers(value = [
+        "Accept: application/json"
+    ])
+    fun refreshTokens(
+        @Field("refresh_token") refreshToken: String,
+        @Field("grant_type") grantType: String = "refresh_token",
+        @Header("Authorization") authorization: String = Credentials.basic(
+            Spotify.CLIENT_ID,
+            Spotify.CLIENT_SECRET,
+            Charset.forName("UTF-8")
+        )
+    ): Single<Response<SpotifySession>>
 
     companion object {
         fun create(): AccountApi {

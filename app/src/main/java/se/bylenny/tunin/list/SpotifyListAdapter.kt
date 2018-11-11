@@ -1,42 +1,32 @@
 package se.bylenny.tunin.list
 
-import android.support.annotation.LayoutRes
 import android.support.v7.widget.RecyclerView
-import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import kotlinx.android.synthetic.main.list_item.view.*
 
-class SpotifyListAdapter(
-    @LayoutRes private val layout: Int
-) : RecyclerView.Adapter<SpotifyListAdapter.Holder>() {
+class SpotifyListAdapter(vararg factories: Pair<String, SpotifyViewHolder.Factory<*>>) : RecyclerView.Adapter<SpotifyViewHolder<*>>() {
 
-    var list: List<Item> = emptyList()
+    private val factories: Map<Int, SpotifyViewHolder.Factory<*>> = factories.map { it.first.hashCode() to it.second }.toMap()
+
+    var list: List<ListItem> = emptyList()
         set(value) {
             field = value
             notifyDataSetChanged()
         }
 
-    override fun onCreateViewHolder(container: ViewGroup, type: Int): Holder =
-        Holder(
-            LayoutInflater.from(container.context).inflate(
-                layout,
-                container,
-                false
-            )
-        )
+    //override fun getItemId(position: Int): Long = getItem(position).uri.hashCode().toLong()
+
+    override fun onCreateViewHolder(container: ViewGroup, type: Int): SpotifyViewHolder<*> =
+        factories[type]!!.createViewHolder(container)
+
+    override fun getItemViewType(position: Int): Int = getItem(position).type.hashCode()
 
     override fun getItemCount(): Int = list.size
 
-    override fun onBindViewHolder(holder: Holder, index: Int) = holder.bind(getItem(index))
-
-    private fun getItem(index: Int): Item = list[index]
-
-    class Holder(view: View) : RecyclerView.ViewHolder(view) {
-        fun bind(item: Item) {
-            itemView.title.text = item.name
-            itemView.type.text = item.type
-        }
+    override fun onBindViewHolder(holder: SpotifyViewHolder<*>, index: Int) {
+        val item = getItem(index)
+        holder.bind(item)
     }
+
+    private fun getItem(index: Int): ListItem = list[index]
 
 }
