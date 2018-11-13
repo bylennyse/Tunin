@@ -19,7 +19,9 @@ import java.io.IOException
 import java.util.*
 
 class Spotify(
-    private val storage: PersistantStorage<SpotifySession>
+    private val storage: PersistantStorage<SpotifySession>,
+    private val accountApi: AccountApi,
+    private val api: SpotifyApi
 ) {
     companion object {
         const val CLIENT_SECRET = "5c69133deb4940d8bb036e6c9319c6f6"
@@ -32,8 +34,6 @@ class Spotify(
     }
 
     private var loginState: String = UUID.randomUUID().toString()
-    private val accountApi: AccountApi by lazy { AccountApi.create() }
-    private val api: SpotifyApi by lazy { SpotifyApi.create() }
     private var session: SpotifySession? = storage.restore()
     private val authorization: String
         get() = "Bearer ${session?.accessToken}"
@@ -136,13 +136,23 @@ class Spotify(
     }
 
     private fun convertToList(input: SpotifyList): List<ListItem> {
-        val tracksTitle = listOf(TitleListItem("tracks"))
-        val tracks: List<ListItem> = input.tracks?.items?.map { convertToTrackItem(it) } ?: emptyList()
-        val artistsTitle = listOf(TitleListItem("artists"))
-        val artists: List<ListItem> = input.artists?.items?.map { convertToArtistItem(it) } ?: emptyList()
-        val albumsTitle = listOf(TitleListItem("albums"))
-        val albums: List<ListItem> = input.albums?.items?.map { convertToAlbumItem(it) } ?: emptyList()
-        return tracksTitle.plus(tracks).plus(artistsTitle).plus(artists).plus(albumsTitle).plus(albums)
+        var result = emptyList<ListItem>()
+
+        input.tracks?.items?.map { convertToTrackItem(it) }?.let { tracks: List<ListItem> ->
+            if (tracks.isNotEmpty()) result = result.plus(TitleListItem("tracks")).plus(tracks)
+        }
+        input.artists?.items?.map { convertToArtistItem(it) }?.let { artists: List<ListItem> ->
+            if (artists.isNotEmpty()) result = result.plus(TitleListItem("artists")).plus(artists)
+        }
+        input.albums?.items?.map { convertToAlbumItem(it) }?.let { albums: List<ListItem> ->
+            if (albums.isNotEmpty()) result = result.plus(TitleListItem("albums")).plus(albums)
+        }
+
+        if (result.isEmpty()) {
+            result = listOf(TitleListItem("No matches!"))
+        }
+
+        return result
     }
 
     private fun convertToTrackItem(item: Item): ListItem {

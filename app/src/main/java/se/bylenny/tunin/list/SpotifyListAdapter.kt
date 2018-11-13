@@ -4,15 +4,24 @@ import android.support.v7.widget.RecyclerView
 import android.view.View
 import android.view.ViewGroup
 
+interface ListView {
+    var list: List<ListItem>
+    var listener: ClickListener?
+
+    interface ClickListener {
+        fun onClicked(item: ListItem)
+    }
+}
+
 class SpotifyListAdapter(
     vararg factories: Pair<String, SpotifyViewHolder.Factory>
-) : RecyclerView.Adapter<SpotifyViewHolder>(), View.OnClickListener {
+) : RecyclerView.Adapter<SpotifyViewHolder>(), View.OnClickListener, ListView {
 
     private val factories: Map<Int, SpotifyViewHolder.Factory> = factories.map { it.first.hashCode() to it.second }.toMap()
 
-    var listener: ClickListener? = null
+    override var listener: ListView.ClickListener? = null
 
-    var list: List<ListItem> = emptyList()
+    override var list: List<ListItem> = emptyList()
         set(value) {
             field = value
             notifyDataSetChanged()
@@ -36,9 +45,5 @@ class SpotifyListAdapter(
         (view.tag as? ListItem)?.let { item ->
             listener?.onClicked(item)
         }
-    }
-
-    interface ClickListener {
-        fun onClicked(item: ListItem)
     }
 }

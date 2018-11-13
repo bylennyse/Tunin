@@ -55,22 +55,15 @@ interface AccountApi {
     ): Single<Response<SpotifySession>>
 
     companion object {
-        fun create(): AccountApi {
+        fun create(moshi: Moshi, client: OkHttpClient): AccountApi {
             val clazz = AccountApi::class.java
-
-            val moshi = Moshi.Builder()
-                .build()
-
-            val client = OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .addNetworkInterceptor(loggingInterceptor(clazz))
-                .build()
-
             return Retrofit.Builder()
                 .baseUrl("https://accounts.spotify.com/")
                 .addConverterFactory(MoshiConverterFactory.create(moshi))
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .client(client)
+                .client(client.newBuilder()
+                    .addNetworkInterceptor(loggingInterceptor(clazz))
+                    .build())
                 .build()
                 .create(clazz)
         }

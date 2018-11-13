@@ -32,22 +32,16 @@ interface SpotifyApi {
     ): Single<Response<SpotifyList>>
 
     companion object {
-        fun create(): SpotifyApi {
+        fun create(moshi: Moshi, client: OkHttpClient): SpotifyApi {
             val clazz = SpotifyApi::class.java
-
-            val moshi = Moshi.Builder()
-                .build()
-
-            val client = OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .addNetworkInterceptor(loggingInterceptor(clazz))
-                .build()
 
             return Retrofit.Builder()
                 .baseUrl("https://api.spotify.com/")
                 .addConverterFactory(MoshiConverterFactory.create(moshi))
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .client(client)
+                .client(client.newBuilder()
+                    .addNetworkInterceptor(loggingInterceptor(clazz))
+                    .build())
                 .build()
                 .create(clazz)
         }
